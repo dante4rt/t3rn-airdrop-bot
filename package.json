@@ -1,0 +1,27 @@
+{
+  "name": "t3rn-airdrop-bot",
+  "version": "1.0.0",
+  "description": "A bot for automating transactions and bridging assets on the t3rn network.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "t3rn",
+    "airdrop",
+    "bot",
+    "crypto",
+    "blockchain",
+    "automation",
+    "bridge"
+  ],
+  "author": "dante4rt",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.7",
+    "colors": "^1.4.0",
+    "ethers": "^6.13.2",
+    "moment": "^2.30.1",
+    "readline-sync": "^1.4.10"
+  }
+}
