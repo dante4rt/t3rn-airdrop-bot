@@ -3,5 +3,5 @@ node_modules
 package-lock.json
 privateKeys.json
 
-ori.js
-test.html
+OPSP_TX_HASH.txt
+ARBT_TX_HASH.txt

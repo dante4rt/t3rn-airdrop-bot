@@ -1,6 +1,6 @@
 # t3rn-airdrop-bot
 
-A bot designed to automate transactions and bridge assets on the t3rn network, making the process seamless and efficient.
+A bot designed to automate transactions and bridge assets on the t3rn network, making the process seamless and efficient. Now supports both Optimism Sepolia and Arbitrum Sepolia testnets.
 
 ## Features
 
@@ -8,6 +8,7 @@ A bot designed to automate transactions and bridge assets on the t3rn network, m
 - Supports multiple wallets through a JSON file containing private keys.
 - Robust error handling with retry mechanisms to ensure all transactions are completed.
 - User-friendly and easy to set up.
+- Supports bridging from **Optimism Sepolia** and **Arbitrum Sepolia**.
 
 ## Requirements
 
@@ -41,16 +42,30 @@ A bot designed to automate transactions and bridge assets on the t3rn network, m
    ```
 
 4. **Run the Bot**:
-   Start the bot by running:
 
-   ```bash
-   node index.js
-   ```
+   - To check the available menu options:
+
+     ```bash
+     npm start
+     ```
+
+   - To run the bot for **Arbitrum Sepolia**:
+
+     ```bash
+     npm run arbt
+     ```
+
+   - To run the bot for **Optimism Sepolia**:
+
+     ```bash
+     npm run opsp
+     ```
 
 ## Usage
 
-- When the bot starts, it will prompt you to enter the number of transactions you wish to perform.
-- The bot will then automatically execute the transactions, handling any errors and retrying as needed.
+- Use `npm start` to check the menu options available.
+- Choose the appropriate command based on the network you want to use.
+- The bot will automatically execute the transactions, handling any errors and retrying as needed.
 
 ## Donations
 

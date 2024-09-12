@@ -4,7 +4,10 @@
   "description": "A bot for automating transactions and bridging assets on the t3rn network.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "arbt": "node arbt.js",
+    "opsp": "node opsp.js"
   },
   "keywords": [
     "t3rn",
