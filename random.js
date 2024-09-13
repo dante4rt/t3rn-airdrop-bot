@@ -14,7 +14,6 @@ const { getAmount: opspGetAmount } = require('./chains/opsp/api');
 const TOKEN_FILE_PATH = path.join(__dirname, 'RANDOM_TX_HASH.txt');
 const PRIVATE_KEYS = JSON.parse(fs.readFileSync('privateKeys.json', 'utf-8'));
 
-
 const ARBT_CONFIG = {
   provider: new JsonRpcProvider(T3RN_ABI.at(-1).RPC_ARBT),
   contractAddress: T3RN_ABI.at(-1).CA_ARBT,
@@ -31,14 +30,42 @@ const OPSP_CONFIG = {
   explorerUrl: 'https://optimism-sepolia.blockscout.com/tx/'
 };
 
-const DESTINATIONS = {
-  Arbitrum: ['Base', 'Blast', 'Optimism'],
-  Optimism: ['Base', 'Blast', 'Arbitrum']
+// Define chain codes consistent with api.js and helper.js files
+const CHAIN_CODES = {
+  'Base': '1',
+  'Blast': '2',
+  'Optimism': 'opsp',
+  'Arbitrum': 'arbt'
 };
-
 
 const getRandomElement = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const getRandomDelay = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+const checkBalance = async (provider, address) => {
+  const balance = await provider.getBalance(address);
+  const balanceInEth = ethers.formatUnits(balance, 'ether');
+  console.log(`🔍 [ ${moment().format('HH:mm:ss')} ] Current balance of ${address}: ${balanceInEth} ETH`.cyan);
+  return balanceInEth;
+};
+
+const createTransaction = async (wallet, sourceConfig, request) => {
+  const gasPrice = parseUnits('0.1', 'gwei');
+  const gasLimit = await sourceConfig.provider.estimateGas({
+    to: sourceConfig.contractAddress,
+    data: request,
+    value: parseUnits('0.01', 'ether'),
+    gasPrice
+  });
+
+  return {
+    data: request,
+    to: sourceConfig.contractAddress,
+    gasLimit,
+    gasPrice,
+    from: wallet.address,
+    value: parseUnits('0.01', 'ether')
+  };
+};
 
 (async () => {
   displayHeader();
@@ -55,20 +82,20 @@ const getRandomDelay = (min, max) => Math.floor(Math.random() * (max - min + 1))
 
   while (totalSuccess < numTx) {
     try {
-      
       const isArbtSource = Math.random() < 0.5;
       const sourceConfig = isArbtSource ? ARBT_CONFIG : OPSP_CONFIG;
-      const destinationChain = getRandomElement(DESTINATIONS[isArbtSource ? 'Arbitrum' : 'Optimism'].filter(d => d !== (isArbtSource ? 'Arbitrum' : 'Optimism')));
+      const sourceChainCode = isArbtSource ? 'Arbitrum' : 'Optimism';
+      
+      let destinationChainCode = getRandomElement(Object.keys(CHAIN_CODES).filter(d => d !== sourceChainCode));
+      const destinationChain = CHAIN_CODES[destinationChainCode];
 
       const wallet = new Wallet(PRIVATE_KEYS[totalSuccess % PRIVATE_KEYS.length], sourceConfig.provider);
 
-      console.log(`⚙️ [ ${moment().format('HH:mm:ss')} ] Doing transactions for ${isArbtSource ? 'Arbitrum' : 'Optimism'} to ${destinationChain}...`.yellow);
+      console.log(`⚙️ [ ${moment().format('HH:mm:ss')} ] Preparing to perform transaction from ${sourceChainCode} to ${destinationChainCode}...`.yellow);
 
-      const balance = await sourceConfig.provider.getBalance(wallet.address);
-      const balanceInEth = ethers.formatUnits(balance, 'ether');
-
+      const balanceInEth = await checkBalance(sourceConfig.provider, wallet.address);
       if (balanceInEth < 0.01) {
-        console.log(`❌ [ ${moment().format('HH:mm:ss')} ] Your balance is too low (💰 ${balanceInEth} ETH), please claim faucet first!`.red);
+        console.log(`❌ [ ${moment().format('HH:mm:ss')} ] Insufficient balance (💰 ${balanceInEth} ETH). Please claim faucet first!`.red);
         process.exit(0);
       }
 
@@ -79,25 +106,10 @@ const getRandomDelay = (min, max) => Math.floor(Math.random() * (max - min + 1))
       }
 
       const request = sourceConfig.transactionData(wallet.address, amount.hex, destinationChain);
-      const gasPrice = parseUnits('0.1', 'gwei');
-      const gasLimit = await sourceConfig.provider.estimateGas({
-        to: sourceConfig.contractAddress,
-        data: request,
-        value: parseUnits('0.01', 'ether'),
-        gasPrice,
-      });
-
-      const transaction = {
-        data: request,
-        to: sourceConfig.contractAddress,
-        gasLimit,
-        gasPrice,
-        from: wallet.address,
-        value: parseUnits('0.01', 'ether'),
-      };
+      const transaction = await createTransaction(wallet, sourceConfig, request);
 
       const result = await wallet.sendTransaction(transaction);
-      console.log(`✅ [ ${moment().format('HH:mm:ss')} ] Transaction successful from ${isArbtSource ? 'Arbitrum' : 'Optimism'} to ${destinationChain}!`.green);
+      console.log(`✅ [ ${moment().format('HH:mm:ss')} ] Transaction successful from ${sourceChainCode} to ${destinationChainCode}!`.green);
       console.log(`🔗 [ ${moment().format('HH:mm:ss')} ] Transaction hash: ${sourceConfig.explorerUrl}${result.hash}`.green);
 
       fs.appendFileSync(TOKEN_FILE_PATH, `${sourceConfig.explorerUrl}${result.hash}\n`);
@@ -106,7 +118,6 @@ const getRandomDelay = (min, max) => Math.floor(Math.random() * (max - min + 1))
 
       totalSuccess++;
 
-      
       const delayDuration = getRandomDelay(10000, 20000);
       console.log(`⏳ Waiting for ${delayDuration / 1000} seconds before the next transaction...`.yellow);
       await new Promise(resolve => setTimeout(resolve, delayDuration));
