@@ -30,7 +30,7 @@ const OPSP_CONFIG = {
   explorerUrl: 'https://optimism-sepolia.blockscout.com/tx/'
 };
 
-// Define chain codes consistent with api.js and helper.js files
+
 const CHAIN_CODES = {
   'Base': '1',
   'Blast': '2',
@@ -63,7 +63,7 @@ const createTransaction = async (wallet, sourceConfig, request) => {
     gasLimit,
     gasPrice,
     from: wallet.address,
-    value: parseUnits('0.01', 'ether')
+    value: parseUnits('0.01', 'ether') 
   };
 };
 
@@ -118,7 +118,7 @@ const createTransaction = async (wallet, sourceConfig, request) => {
 
       totalSuccess++;
 
-      const delayDuration = getRandomDelay(10000, 20000);
+      const delayDuration = getRandomDelay(15000, 30000); 
       console.log(`⏳ Waiting for ${delayDuration / 1000} seconds before the next transaction...`.yellow);
       await new Promise(resolve => setTimeout(resolve, delayDuration));
     } catch (error) {
