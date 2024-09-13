@@ -1,176 +1,121 @@
 require('colors');
 const { Wallet, JsonRpcProvider, ethers, parseUnits } = require('ethers');
 const fs = require('fs');
+const path = require('path');
+const readlineSync = require('readline-sync');
 const moment = require('moment');
 const T3RN_ABI = require('./contracts/ABI');
 const { displayHeader } = require('./utils/display');
-const { transactionData, delay } = require('./utils/helper');
-const { getAmount } = require('./utils/api');
+const { transactionData: arbtTransactionData, delay: arbtDelay } = require('./chains/arbt/helper');
+const { getAmount: arbtGetAmount } = require('./chains/arbt/api');
+const { transactionData: opspTransactionData, delay: opspDelay } = require('./chains/opsp/helper');
+const { getAmount: opspGetAmount } = require('./chains/opsp/api');
 
+const TOKEN_FILE_PATH = path.join(__dirname, 'RANDOM_TX_HASH.txt');
 const PRIVATE_KEYS = JSON.parse(fs.readFileSync('privateKeys.json', 'utf-8'));
-const RPC_URL = T3RN_ABI.at(-1).RPC_ARBT;
 
-const provider = new JsonRpcProvider(RPC_URL);
-const CONTRACT_ADDRESS = T3RN_ABI.at(-1).CA_ARBT;
 
-// Define possible destinations
-const destinations = {
-  '1': 'Base Sepolia',
-  '2': 'Blast Sepolia',
-  '3': 'Optimism Sepolia'
+const ARBT_CONFIG = {
+  provider: new JsonRpcProvider(T3RN_ABI.at(-1).RPC_ARBT),
+  contractAddress: T3RN_ABI.at(-1).CA_ARBT,
+  getAmount: arbtGetAmount,
+  transactionData: arbtTransactionData,
+  explorerUrl: 'https://sepolia-explorer.arbitrum.io/tx/'
 };
 
-// Function to get a random network option
-function getRandomDestination() {
-  const keys = Object.keys(destinations);
-  const randomKey = keys[Math.floor(Math.random() * keys.length)];
-  return randomKey;
-}
+const OPSP_CONFIG = {
+  provider: new JsonRpcProvider(T3RN_ABI.at(-1).RPC_OPSP),
+  contractAddress: T3RN_ABI.at(-1).CA_OPSP,
+  getAmount: opspGetAmount,
+  transactionData: opspTransactionData,
+  explorerUrl: 'https://optimism-sepolia.blockscout.com/tx/'
+};
 
-function getRandomNumberOfTransactions() {
-  return Math.floor(Math.random() * (1000 - 400 + 1)) + 400; // Random number between 400 and 1000
-}
+const DESTINATIONS = {
+  Arbitrum: ['Base', 'Blast', 'Optimism'],
+  Optimism: ['Base', 'Blast', 'Arbitrum']
+};
 
-function getRandomDelay() {
-  // Random delay between 2 minutes (120000 ms) and 5 minutes (300000 ms)
-  return Math.floor(Math.random() * (300000 - 120000 + 1)) + 120000;
-}
 
-function getRandomTransactionValue() {
-  // Random value between 0.0003 ETH and 0.0010 ETH
-  const min = 0.0003;
-  const max = 0.0010;
-  const randomValue = Math.random() * (max - min) + min;
-  return {
-    value: parseUnits(randomValue.toFixed(4), 'ether'),
-    amountInEth: randomValue.toFixed(4)
-  };
-}
-
-async function processTransactions(wallet, maxTxPerDay) {
-  let totalSuccess = 0;
-
-  while (totalSuccess < maxTxPerDay) {
-    try {
-      const balance = await provider.getBalance(wallet.address);
-      const balanceInEth = ethers.formatUnits(balance, 'ether');
-
-      console.log(
-        `⚙️ [ ${moment().format('HH:mm:ss')} ] Starting transaction process for wallet: ${wallet.address}...`.yellow
-      );
-
-      if (balanceInEth < 0.001) {
-        console.log(
-          `❌ [ ${moment().format('HH:mm:ss')} ] Insufficient balance: ${balanceInEth} ETH. Please top up your account.`.red
-        );
-        return;
-      }
-
-      let counter = maxTxPerDay - totalSuccess;
-
-      while (counter > 0) {
-        try {
-          const amount = await getAmount();
-          if (!amount) {
-            console.log(
-              `❌ [ ${moment().format('HH:mm:ss')} ] Error fetching amount. Skipping this transaction.`.red
-            );
-            continue;
-          }
-
-          // Generate a random destination and transaction value
-          const randomOption = getRandomDestination();
-          const { value, amountInEth } = getRandomTransactionValue();
-          const request = transactionData(
-            wallet.address,
-            amount.hex,
-            randomOption
-          );
-          const gasPrice = parseUnits('0.1', 'gwei');
-
-          const transaction = {
-            data: request,
-            to: CONTRACT_ADDRESS,
-            gasLimit: 2000000,
-            gasPrice,
-            from: wallet.address,
-            value, // Use the random transaction value
-          };
-
-          console.log(
-            `💸 [ ${moment().format('HH:mm:ss')} ] Preparing transaction to ${destinations[randomOption]} with ${amountInEth} ETH.`.cyan
-          );
-
-          const result = await wallet.sendTransaction(transaction);
-          console.log(
-            `✅ [ ${moment().format('HH:mm:ss')} ] Transaction sent successfully! ${amountInEth} ETH transferred.`.green
-          );
-          console.log(
-            `🔗 [ ${moment().format('HH:mm:ss')} ] Transaction hash: https://sepolia-explorer.arbitrum.io/tx/${result.hash}`.green
-          );
-          console.log('');
-
-          totalSuccess++;
-          counter--;
-
-          if (counter > 0) {
-            const randomDelay = getRandomDelay();
-            console.log(`⏳ [ ${moment().format('HH:mm:ss')} ] Waiting ${randomDelay / 1000} seconds before next transaction...`.yellow);
-            await delay(randomDelay);
-          }
-        } catch (error) {
-          console.log(
-            `❌ [ ${moment().format('HH:mm:ss')} ] Error processing transaction: ${error.message}`.red
-          );
-        }
-      }
-    } catch (error) {
-      console.log(
-        `❌ [ ${moment().format('HH:mm:ss')} ] Error while processing transactions: ${error.message}`.red
-      );
-    }
-  }
-}
+const getRandomElement = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const getRandomDelay = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 (async () => {
   displayHeader();
-  console.log('⏳ [ ' + moment().format('YYYY-MM-DD HH:mm:ss') + ' ] Initializing process...'.yellow);
+  console.log('⏳ Please wait...'.yellow);
   console.log('');
 
-  while (true) {
-    let totalTxForDay = 0;
-    const dailyTxLimit = getRandomNumberOfTransactions(); // Random number between 400 and 1000
-
-    console.log(
-      `📅 [ ${moment().format('YYYY-MM-DD HH:mm:ss')} ] Daily transaction limit set to ${dailyTxLimit}.`.yellow
-    );
-
-    for (const PRIVATE_KEY of PRIVATE_KEYS) {
-      const wallet = new Wallet(PRIVATE_KEY, provider);
-      const maxTxPerDay = Math.min(dailyTxLimit - totalTxForDay, getRandomNumberOfTransactions());
-
-      if (totalTxForDay >= dailyTxLimit) break;
-
-      console.log(
-        `📅 [ ${moment().format('YYYY-MM-DD HH:mm:ss')} ] Starting ${maxTxPerDay} transactions for address ${wallet.address}...`.yellow
-      );
-
-      await processTransactions(wallet, maxTxPerDay);
-
-      totalTxForDay += maxTxPerDay;
-
-      if (totalTxForDay >= dailyTxLimit) break;
-    }
-
-    console.log(
-      `🎉 [ ${moment().format('YYYY-MM-DD HH:mm:ss')} ] Completed all transactions for today! Total: ${totalTxForDay}`.green
-    );
-
-    console.log(
-      `⏳ [ ${moment().format('YYYY-MM-DD HH:mm:ss')} ] Pausing for 24 hours before next run...`.yellow
-    );
-
-    await delay(24 * 60 * 60 * 1000); // Wait for 24 hours
+  const numTx = readlineSync.questionInt('🔄 How many times you want to swap or bridge? ');
+  if (isNaN(numTx) || numTx <= 0) {
+    console.log('❌ Number of transactions must be a positive number!'.red);
+    process.exit(1);
   }
-})();
 
+  let totalSuccess = 0;
+
+  while (totalSuccess < numTx) {
+    try {
+      
+      const isArbtSource = Math.random() < 0.5;
+      const sourceConfig = isArbtSource ? ARBT_CONFIG : OPSP_CONFIG;
+      const destinationChain = getRandomElement(DESTINATIONS[isArbtSource ? 'Arbitrum' : 'Optimism'].filter(d => d !== (isArbtSource ? 'Arbitrum' : 'Optimism')));
+
+      const wallet = new Wallet(PRIVATE_KEYS[totalSuccess % PRIVATE_KEYS.length], sourceConfig.provider);
+
+      console.log(`⚙️ [ ${moment().format('HH:mm:ss')} ] Doing transactions for ${isArbtSource ? 'Arbitrum' : 'Optimism'} to ${destinationChain}...`.yellow);
+
+      const balance = await sourceConfig.provider.getBalance(wallet.address);
+      const balanceInEth = ethers.formatUnits(balance, 'ether');
+
+      if (balanceInEth < 0.01) {
+        console.log(`❌ [ ${moment().format('HH:mm:ss')} ] Your balance is too low (💰 ${balanceInEth} ETH), please claim faucet first!`.red);
+        process.exit(0);
+      }
+
+      const amount = await sourceConfig.getAmount(destinationChain);
+      if (!amount) {
+        console.log(`❌ Failed to get the amount. Skipping transaction...`.red);
+        continue;
+      }
+
+      const request = sourceConfig.transactionData(wallet.address, amount.hex, destinationChain);
+      const gasPrice = parseUnits('0.1', 'gwei');
+      const gasLimit = await sourceConfig.provider.estimateGas({
+        to: sourceConfig.contractAddress,
+        data: request,
+        value: parseUnits('0.01', 'ether'),
+        gasPrice,
+      });
+
+      const transaction = {
+        data: request,
+        to: sourceConfig.contractAddress,
+        gasLimit,
+        gasPrice,
+        from: wallet.address,
+        value: parseUnits('0.01', 'ether'),
+      };
+
+      const result = await wallet.sendTransaction(transaction);
+      console.log(`✅ [ ${moment().format('HH:mm:ss')} ] Transaction successful from ${isArbtSource ? 'Arbitrum' : 'Optimism'} to ${destinationChain}!`.green);
+      console.log(`🔗 [ ${moment().format('HH:mm:ss')} ] Transaction hash: ${sourceConfig.explorerUrl}${result.hash}`.green);
+
+      fs.appendFileSync(TOKEN_FILE_PATH, `${sourceConfig.explorerUrl}${result.hash}\n`);
+      console.log('✅ Transaction hash URL has been saved to RANDOM_TX_HASH.txt.'.green);
+      console.log('');
+
+      totalSuccess++;
+
+      
+      const delayDuration = getRandomDelay(10000, 20000);
+      console.log(`⏳ Waiting for ${delayDuration / 1000} seconds before the next transaction...`.yellow);
+      await new Promise(resolve => setTimeout(resolve, delayDuration));
+    } catch (error) {
+      console.log(`❌ [ ${moment().format('HH:mm:ss')} ] Error during transaction: ${error}`.red);
+    }
+  }
+
+  console.log('');
+  console.log(`🎉 [ ${moment().format('HH:mm:ss')} ] All ${numTx} transactions are complete!`.green);
+  console.log(`📢 [ ${moment().format('HH:mm:ss')} ] Subscribe: https://t.me/HappyCuanAirdrop`.green);
+})();
