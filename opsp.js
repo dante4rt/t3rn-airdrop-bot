@@ -11,6 +11,7 @@ const { transactionData, delay } = require('./chains/opsp/helper');
 const { getAmount } = require('./chains/opsp/api');
 
 const TOKEN_FILE_PATH = path.join(__dirname, 'OPSP_TX_HASH.txt');
+const { writeLog } = require('./utils/log'); 
 
 const PRIVATE_KEYS = JSON.parse(fs.readFileSync('privateKeys.json', 'utf-8'));
 const RPC_URL = T3RN_ABI.at(-1).RPC_OPSP;
@@ -122,10 +123,7 @@ const CONTRACT_ADDRESS = T3RN_ABI.at(-1).CA_OPSP;
                 result.hash
               }`.green
             );
-            fs.writeFileSync(
-              TOKEN_FILE_PATH,
-              `https://optimism-sepolia.blockscout.com/tx/${result.hash}`
-            );
+            writeLog(TOKEN_FILE_PATH,`[${moment().format('HH:mm:ss')}] https://optimism-sepolia.blockscout.com/tx/${result.hash}`);
             console.log(
               '✅ Transaction hash url has been saved to OPSP_TX_HASH.txt.'
                 .green

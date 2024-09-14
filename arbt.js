@@ -11,6 +11,7 @@ const { transactionData, delay } = require('./chains/arbt/helper');
 const { getAmount } = require('./chains/arbt/api');
 
 const TOKEN_FILE_PATH = path.join(__dirname, 'ARBT_TX_HASH.txt');
+const { writeLog } = require('./utils/log'); 
 
 const PRIVATE_KEYS = JSON.parse(fs.readFileSync('privateKeys.json', 'utf-8'));
 const RPC_URL = T3RN_ABI.at(-1).RPC_ARBT;
@@ -118,10 +119,7 @@ const CONTRACT_ADDRESS = T3RN_ABI.at(-1).CA_ARBT;
                 result.hash
               }`.green
             );
-            fs.writeFileSync(
-              TOKEN_FILE_PATH,
-              `https://sepolia-explorer.arbitrum.io/tx/${result.hash}`
-            );
+            writeLog(TOKEN_FILE_PATH,`[${moment().format('HH:mm:ss')}] https://sepolia-explorer.arbitrum.io/tx/${result.hash}`);
             console.log(
               '✅ Transaction hash url has been saved to ARBT_TX_HASH.txt.'
                 .green
