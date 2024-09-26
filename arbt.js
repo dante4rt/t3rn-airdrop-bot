@@ -6,7 +6,7 @@ const path = require('path');
 const readlineSync = require('readline-sync');
 const moment = require('moment');
 const T3RN_ABI = require('./contracts/ABI');
-const { displayHeader } = require('./utils/display');
+const { displayHeader, createTable } = require('./utils/display');
 const { transactionData, delay } = require('./chains/arbt/helper');
 const { getAmount } = require('./chains/arbt/api');
 
@@ -33,6 +33,30 @@ const CONTRACT_ADDRESS = T3RN_ABI.at(-1).CA_ARBT;
     console.log('Subscribe: https://t.me/HappyCuanAirdrop.'.green);
     process.exit(0);
   }
+
+  console.log(`\n`)
+  console.log(`ARB Sepolia balance & Possible transactions (if minimum amount 0.01 ETH) `.yellow)
+
+  let wallets = [];
+  for (const PRIVATE_KEY of PRIVATE_KEYS) {
+    const wallet = new Wallet(PRIVATE_KEY, provider);
+    const balance = await provider.getBalance(wallet.address);
+    const balanceInEth = ethers.formatUnits(balance, 'ether');
+
+    // calculate how much possible transactions
+    const numberOfTx = Math.floor(balanceInEth / 0.01);
+
+    wallets.push({
+      address: wallet.address.slice(0, 8) + '...' + wallet.address.slice(-6),
+      balance: parseFloat(balanceInEth).toFixed(3) + ' ETH',
+      tx: numberOfTx
+    });
+  }
+  const table = await createTable(wallets);
+  console.log(table);
+  console.log(`The number of possible transactions does not include gas fees`.yellow);
+
+  console.log(`\n`)
 
   const numTx = readlineSync.questionInt(
     '🔄 How many times you want to swap or bridge? '
