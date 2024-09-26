@@ -1,4 +1,5 @@
 require('colors');
+const Table = require('cli-table3');
 
 function displayHeader() {
   process.stdout.write('\x1Bc');
@@ -10,4 +11,25 @@ function displayHeader() {
   console.log();
 }
 
-module.exports = { displayHeader };
+async function createTable(wallets) {
+  const table = new Table({
+    head: ['Wallet', 'Balance', 'Possible Tx'],
+    style: {
+      head: ['green'],
+    },
+    colWidths: [20, 15, 15],
+  });
+
+  for (const wallet of wallets) {
+    table.push([
+      wallet.address,
+      wallet.balance,
+      wallet.tx
+    ]);
+  }
+
+  return table.toString();
+}
+
+module.exports = { displayHeader, createTable };
+
