@@ -38,8 +38,8 @@ function getRandomDelay() {
 
 function getRandomTransactionValue() {
   // Random value between 0.0003 ETH and 0.0010 ETH
-  const min = 0.0003;
-  const max = 0.0010;
+  const min = 0.1;
+  const max = 0.1001;
   const randomValue = Math.random() * (max - min) + min;
   return {
     value: parseUnits(randomValue.toFixed(4), 'ether'),
