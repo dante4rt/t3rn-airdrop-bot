@@ -58,7 +58,7 @@ const CONTRACT_ADDRESS = T3RN_ABI.at(-1).CA_ARBT;
           )} ] Doing transactions for address ${wallet.address}...`.yellow
         );
 
-        if (balanceInEth < 0.01) {
+        if (balanceInEth < 0.1) {
           console.log(
             `❌ [ ${moment().format(
               'HH:mm:ss'
@@ -91,7 +91,7 @@ const CONTRACT_ADDRESS = T3RN_ABI.at(-1).CA_ARBT;
             const gasLimit = await provider.estimateGas({
               to: CONTRACT_ADDRESS,
               data: request,
-              value: parseUnits('0.01', 'ether'),
+              value: parseUnits('0.1', 'ether'),
               gasPrice,
             });
 
@@ -101,7 +101,7 @@ const CONTRACT_ADDRESS = T3RN_ABI.at(-1).CA_ARBT;
               gasLimit,
               gasPrice,
               from: wallet.address,
-              value: parseUnits('0.01', 'ether'), // adjustable
+              value: parseUnits('0.1', 'ether'), // adjustable
             };
 
             const result = await wallet.sendTransaction(transaction);
