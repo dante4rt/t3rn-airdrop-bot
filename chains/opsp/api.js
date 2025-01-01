@@ -11,7 +11,7 @@ async function getAmount(chain) {
         toAsset: 'eth',
         fromChain: 'opsp',
         toChain: chain === '1' ? 'arbt' : chain === '2' ? 'bssp' : 'blss',
-        amountWei: '10000000000000000',
+        amountWei: '100000000000000000',
         executorTipUSD: 0,
         overpayOptionPercentage: 0,
         spreadOptionPercentage: 0,

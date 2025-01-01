@@ -11,7 +11,7 @@ const { transactionData, delay } = require('./chains/opsp/helper');
 const { getAmount } = require('./chains/opsp/api');
 
 const TOKEN_FILE_PATH = path.join(__dirname, 'OPSP_TX_HASH.txt');
-const { writeLog } = require('./utils/log'); 
+const { writeLog } = require('./utils/log');
 
 const PRIVATE_KEYS = JSON.parse(fs.readFileSync('privateKeys.json', 'utf-8'));
 const RPC_URL = T3RN_ABI.at(-1).RPC_OPSP;
@@ -58,7 +58,7 @@ const CONTRACT_ADDRESS = T3RN_ABI.at(-1).CA_OPSP;
           )} ] Doing transactions for address ${wallet.address}...`.yellow
         );
 
-        if (balanceInEth < 0.01) {
+        if (balanceInEth < 0.1) {
           console.log(
             `❌ [ ${moment().format(
               'HH:mm:ss'
@@ -86,22 +86,37 @@ const CONTRACT_ADDRESS = T3RN_ABI.at(-1).CA_OPSP;
               options
             );
 
-            const gasPrice = parseUnits('0.1', 'gwei');
+            console.log('Encoded Transaction Data:', request);
 
-            const gasLimit = await provider.estimateGas({
+            let gasLimit;
+            try {
+              gasLimit = await provider.estimateGas({
+                to: CONTRACT_ADDRESS,
+                data: request,
+                value: parseUnits('0.1', 'ether'),
+              });
+            } catch (err) {
+              console.error('Gas estimation failed:', err.message.red);
+              gasLimit = ethers.BigNumber.from('300000');
+              con
+            }
+
+
+            console.log('Estimated Gas Limit:', gasLimit.toString());
+            console.log('Gas Estimation Inputs:', {
               to: CONTRACT_ADDRESS,
               data: request,
-              value: parseUnits('0.01', 'ether'),
-              gasPrice,
+              value: parseUnits('0.1', 'ether').toString(),
             });
-
+            
+            const gasPrice = parseUnits('0.1', 'gwei');
             const transaction = {
               data: request,
               to: CONTRACT_ADDRESS,
               gasLimit,
               gasPrice,
               from: wallet.address,
-              value: parseUnits('0.01', 'ether'), // adjustable
+              value: parseUnits('0.1', 'ether'), // Ensure correct value
             };
 
             const result = await wallet.sendTransaction(transaction);
@@ -123,7 +138,10 @@ const CONTRACT_ADDRESS = T3RN_ABI.at(-1).CA_OPSP;
                 result.hash
               }`.green
             );
-            writeLog(TOKEN_FILE_PATH,`[${moment().format('HH:mm:ss')}] https://optimism-sepolia.blockscout.com/tx/${result.hash}`);
+            writeLog(
+              TOKEN_FILE_PATH,
+              `[${moment().format('HH:mm:ss')}] Transaction: ${result.hash}`
+            );
             console.log(
               '✅ Transaction hash url has been saved to OPSP_TX_HASH.txt.'
                 .green
